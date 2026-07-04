@@ -1,9 +1,10 @@
-"use client";
+'use client';
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CalendarDays, User, LogOut } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth';
+import { logoutAction } from '@/app/actions/auth';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,8 +20,9 @@ export const Header = () => {
   const router = useRouter();
   const { user, isAuthenticated, logout } = useAuthStore();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logoutAction(); // clears cookie on server
+    logout(); // clears Zustand store
     router.push('/');
   };
 
