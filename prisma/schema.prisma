@@ -1,0 +1,299 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// -------------------- ENUMS --------------------
+
+enum Role {
+  SUPER_ADMIN
+  ORGANIZER
+  ATTENDEE
+  SPEAKER
+}
+
+enum EventType {
+  PHYSICAL
+  VIRTUAL
+  HYBRID
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+  COMPLETED
+  ARCHIVED
+}
+
+enum RegistrationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  CHECKED_IN
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum TicketTierStatus {
+  ACTIVE
+  SOLD_OUT
+  CANCELLED
+}
+
+enum NotificationType {
+  EMAIL
+  IN_APP
+  SMS
+}
+
+// -------------------- MODELS --------------------
+
+model User {
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  email         String         @unique
+  passwordHash  String
+  firstName     String
+  lastName      String
+  avatar        String?        // Cloudinary/S3 URL
+  role          Role           @default(ATTENDEE)
+  isActive      Boolean        @default(true)
+
+  // Relations
+  events        Event[]        @relation("OrganizerEvents") // Events this user organizes
+  registrations Registration[]
+  transactions  Transaction[]
+  notifications Notification[]
+  feedback      Feedback[]
+  waitlist      Waitlist[]
+  speakerProfile Speaker?      // Optional: if user is a speaker
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@map("users")
+}
+
+model Event {
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  title         String
+  slug          String         @unique // e.g., "tech-conference-2026"
+  description   String
+  category      String         // e.g., "Tech", "Music", "Business"
+  tags          String[]       // MongoDB native array
+  eventType     EventType      @default(PHYSICAL)
+  status        EventStatus    @default(DRAFT)
+
+  // Date & Location
+  startDate     DateTime
+  endDate       DateTime
+  timezone      String         @default("UTC")
+  venueAddress  String?        // For physical events
+  virtualLink   String?        // For virtual events (Zoom/Meet/YouTube)
+  maxCapacity   Int
+  bannerImage   String?        // Cloudinary/S3 URL
+
+  // Organizer (Relation)
+  organizerId   String         @db.ObjectId
+  organizer     User           @relation("OrganizerEvents", fields: [organizerId], references: [id])
+
+  // Nested Data (Relations)
+  ticketTiers   TicketTier[]
+  sessions      Session[]
+  registrations Registration[]
+  feedback      Feedback[]
+  waitlist      Waitlist[]
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  // Indexes for performance
+  @@index([organizerId])
+  @@index([slug])
+  @@index([startDate, endDate])
+  @@map("events")
+}
+
+model TicketTier {
+  id              String           @id @default(auto()) @map("_id") @db.ObjectId
+  eventId         String           @db.ObjectId
+  event           Event            @relation(fields: [eventId], references: [id])
+
+  name            String           // "Early Bird", "VIP", "General Admission"
+  description     String?
+  price           Float            // 0 for free events
+  currency        String           @default("USD")
+  quantityTotal   Int
+  quantitySold    Int              @default(0)
+  salesStart      DateTime
+  salesEnd        DateTime
+  status          TicketTierStatus @default(ACTIVE)
+
+  registrations   Registration[]
+
+  @@map("ticket_tiers")
+}
+
+model Registration {
+  id                String             @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String             @db.ObjectId
+  user              User               @relation(fields: [userId], references: [id])
+  eventId           String             @db.ObjectId
+  event             Event              @relation(fields: [eventId], references: [id])
+  ticketTierId      String             @db.ObjectId
+  ticketTier        TicketTier         @relation(fields: [ticketTierId], references: [id])
+
+  status            RegistrationStatus @default(PENDING)
+  qrCode            String?            // Unique hash for check-in QR code
+  customFields      Json?              // Organizer-specific questions (JSON object)
+
+  // Check-in details
+  checkedInAt       DateTime?
+  checkedInBy       String?            // Admin/Organizer ID
+
+  transaction       Transaction?       // One-to-one relation
+
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@unique([userId, eventId]) // Prevent duplicate registrations
+  @@index([eventId, status])  // Fast filtering by status per event
+  @@map("registrations")
+}
+
+model Transaction {
+  id                String         @id @default(auto()) @map("_id") @db.ObjectId
+  registrationId    String         @unique @db.ObjectId
+  registration      Registration   @relation(fields: [registrationId], references: [id])
+  userId            String         @db.ObjectId
+  user              User           @relation(fields: [userId], references: [id])
+
+  amount            Float
+  currency          String         @default("USD")
+  paymentMethod     String         // STRIPE, PAYPAL, RAZORPAY
+  status            PaymentStatus  @default(PENDING)
+  externalTxId      String?        // Stripe Payment Intent ID / PayPal capture ID
+  metadata          Json?          // Raw webhook payloads or extra metadata
+
+  receiptUrl        String?        // Link to PDF receipt (S3/Cloudinary)
+
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@map("transactions")
+}
+
+model Session {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  eventId       String    @db.ObjectId
+  event         Event     @relation(fields: [eventId], references: [id])
+
+  title         String
+  description   String?
+  startTime     DateTime
+  endTime       DateTime
+  room          String?   // Physical room name or virtual breakout room ID
+
+  // Speaker (optional)
+  speakerId     String?   @db.ObjectId
+  speaker       Speaker?  @relation(fields: [speakerId], references: [id])
+
+  recordingUrl  String?   // Link to session recording after the event
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([eventId, startTime])
+  @@map("sessions")
+}
+
+model Speaker {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String?   @unique @db.ObjectId // Links to User (if they have an account)
+  user          User?     @relation(fields: [userId], references: [id])
+
+  name          String
+  bio           String?
+  photo         String?   // Profile picture URL
+  email         String?   // Public contact (optional)
+  company       String?
+  socialLinks   Json?     // Example: { "twitter": "...", "linkedin": "..." }
+
+  sessions      Session[]
+
+  @@map("speakers")
+}
+
+model Feedback {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String    @db.ObjectId
+  user          User      @relation(fields: [userId], references: [id])
+  eventId       String    @db.ObjectId
+  event         Event     @relation(fields: [eventId], references: [id])
+  sessionId     String?   @db.ObjectId // Optional: specific session feedback
+
+  rating        Int       // 1 to 5 stars
+  comment       String?   // Text review
+  isAnonymous   Boolean   @default(false)
+
+  createdAt     DateTime  @default(now())
+
+  @@index([eventId, rating])
+  @@map("feedbacks")
+}
+
+model Notification {
+  id            String           @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String           @db.ObjectId
+  user          User             @relation(fields: [userId], references: [id])
+
+  type          NotificationType
+  channel       String           // "order_confirmation", "event_reminder", "broadcast"
+  subject       String?
+  content       String           // HTML or plain text
+  isRead        Boolean          @default(false)
+  sentAt        DateTime         @default(now())
+  deliveredAt   DateTime?        // When email/SMS was successfully sent
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model Waitlist {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  eventId       String    @db.ObjectId
+  event         Event     @relation(fields: [eventId], references: [id])
+  userId        String    @db.ObjectId
+  user          User      @relation(fields: [userId], references: [id])
+
+  status        String    @default("WAITING") // WAITING, PROMOTED, EXPIRED
+  registeredAt  DateTime  @default(now())
+  promotedAt    DateTime? // When they were moved to actual registration
+
+  @@unique([eventId, userId]) // Prevent duplicate waitlist entries
+  @@index([eventId, status])
+  @@map("waitlists")
+}
+
+model Category {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  name          String    @unique
+  slug          String    @unique
+  description   String?
+  icon          String?   // Emoji or FontAwesome class
+
+  @@map("categories")
+}
