@@ -30,7 +30,6 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { events } from '@/data/events';
 
 // ---------- Cart Reducer ----------
 type CartItem = {
@@ -107,31 +106,33 @@ function cartReducer(state: CartState, action: CartAction): CartState {
 export default function EventDetail({ params }: { params: Promise<{ slug: string }> }) {
   const router = useRouter();
   const { slug } = use(params);
-  const event = events.find((e) => e.slug === slug);
-  if (!event) return notFound();
-
   const { toast } = useToast();
 
-  // Cart
+  const [event, setEvent] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [cartState, dispatch] = useReducer(cartReducer, { items: [], total: 0, itemCount: 0 });
-
-  // Local quantities for each tier
-  const [quantities, setQuantities] = useState<Record<string, number>>(
-    event.ticketTiers.reduce((acc, tier) => ({ ...acc, [tier.id]: 1 }), {})
-  );
-
-  // Checkout dialog state
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [checkoutStep, setCheckoutStep] = useState<'review' | 'payment' | 'confirmation'>('review');
-
-  const isVirtual = event.eventType === 'VIRTUAL';
-  const eventDate = format(new Date(event.startDate), 'EEEE, MMM d, yyyy');
-  const eventTime = format(new Date(event.startDate), 'h:mm a');
-  const endTime = format(new Date(event.endDate), 'h:mm a');
-
-  // Countdown
   const [timeLeft, setTimeLeft] = useState('');
+
   useEffect(() => {
+    fetch(`/api/events/${slug}`)
+      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
+      .then((data) => { setEvent(data); setLoading(false); })
+      .catch(() => { setLoading(false); });
+  }, [slug]);
+
+  useEffect(() => {
+    if (event?.ticketTiers) {
+      setQuantities(
+        event.ticketTiers.reduce((acc: Record<string, number>, tier: any) => ({ ...acc, [tier.id]: 1 }), {})
+      );
+    }
+  }, [event]);
+
+  useEffect(() => {
+    if (!event?.startDate) return;
     const interval = setInterval(() => {
       const diff = new Date(event.startDate).getTime() - Date.now();
       if (diff <= 0) {
@@ -142,7 +143,19 @@ export default function EventDetail({ params }: { params: Promise<{ slug: string
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [event.startDate]);
+  }, [event?.startDate]);
+
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+    </div>
+  );
+  if (!event) return notFound();
+
+  const isVirtual = event.eventType === 'VIRTUAL';
+  const eventDate = format(new Date(event.startDate), 'EEEE, MMM d, yyyy');
+  const eventTime = format(new Date(event.startDate), 'h:mm a');
+  const endTime = format(new Date(event.endDate), 'h:mm a');
 
   // Handlers
   const handleQuantityChange = (tierId: string, delta: number) => {
@@ -230,15 +243,17 @@ export default function EventDetail({ params }: { params: Promise<{ slug: string
       {/* Floating cart button */}
       <div className="fixed bottom-6 right-6 z-50">
         <Sheet>
-          <SheetTrigger asChild>
-            <Button size="lg" className="rounded-full shadow-xl bg-blue-600 hover:bg-blue-700 text-white relative">
+          <SheetTrigger
+            render={
+              <button className="relative inline-flex items-center justify-center rounded-full shadow-xl bg-blue-600 hover:bg-blue-700 text-white h-14 w-14 transition-colors" />
+            }
+          >
               <ShoppingCart className="h-5 w-5" />
               {cartState.itemCount > 0 && (
                 <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center">
                   {cartState.itemCount}
                 </span>
               )}
-            </Button>
           </SheetTrigger>
           <SheetContent className="w-full sm:max-w-md">
             <SheetHeader>

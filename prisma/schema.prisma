@@ -120,7 +120,6 @@ model Event {
 
   // Indexes for performance
   @@index([organizerId])
-  @@index([slug])
   @@index([startDate, endDate])
   @@map("events")
 }

@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const token = request.cookies.get('auth-token')?.value;
   const { pathname } = request.nextUrl;
 
-  // Protected routes
   const isProtected =
     pathname.startsWith('/organizer') ||
     pathname.startsWith('/admin') ||
@@ -15,7 +14,6 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // Redirect away from auth pages if already logged in
   if (token && (pathname === '/login' || pathname === '/register')) {
     return NextResponse.redirect(new URL('/', request.url));
   }

@@ -1,12 +1,8 @@
-import { events, Event } from '@/data/events';
-
-export const eventService = {
-  getAll: async (): Promise<Event[]> => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    return events;
-  },
-  getBySlug: async (slug: string): Promise<Event | undefined> => {
-    await new Promise((resolve) => setTimeout(resolve, 200));
-    return events.find((e) => e.slug === slug);
-  },
-};
+export async function getEvents() {
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/events`,
+    { cache: 'no-store' }
+  );
+  if (!res.ok) throw new Error('Failed to fetch events');
+  return res.json();
+}
