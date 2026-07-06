@@ -16,6 +16,7 @@ async function getEvents() {
 
 export default async function Home() {
   const events = await getEvents();
+
   return (
     <main>
       <Hero />

@@ -1,9 +1,21 @@
 'use server';
 
 import { cookies } from 'next/headers';
+import bcrypt from 'bcryptjs';
+import prisma from '@/lib/prisma';
 import { loginSchema, registerSchema } from '@/lib/validations/auth';
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+function makeToken(id: string, email: string) {
+  return Buffer.from(JSON.stringify({ id, email })).toString('base64');
+}
+
+const COOKIE_OPTS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax' as const,
+  maxAge: 60 * 60 * 24 * 7,
+  path: '/',
+};
 
 export async function loginAction(formData: FormData) {
   const email = formData.get('email') as string;
@@ -13,16 +25,27 @@ export async function loginAction(formData: FormData) {
   if (!result.success) return { error: result.error.errors[0].message };
 
   try {
-    const res = await fetch(`${BASE_URL}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user || !user.isActive) return { error: 'Invalid credentials' };
 
-    const data = await res.json();
-    if (!res.ok) return { error: data.error || 'Invalid credentials' };
-    return { user: data.user };
-  } catch {
+    const valid = await bcrypt.compare(password, user.passwordHash);
+    if (!valid) return { error: 'Invalid credentials' };
+
+    const cookieStore = await cookies();
+    cookieStore.set('auth-token', makeToken(user.id, user.email), COOKIE_OPTS);
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        avatar: user.avatar,
+      },
+    };
+  } catch (e) {
+    console.error('Login error:', e);
     return { error: 'Something went wrong. Please try again.' };
   }
 }
@@ -38,16 +61,21 @@ export async function registerAction(formData: FormData) {
   if (!result.success) return { error: result.error.errors[0].message };
 
   try {
-    const res = await fetch(`${BASE_URL}/api/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ firstName, lastName, email, password }),
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) return { error: 'Email already in use' };
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const user = await prisma.user.create({
+      data: { firstName, lastName, email, passwordHash },
+      select: { id: true, email: true, firstName: true, lastName: true, role: true, avatar: true },
     });
 
-    const data = await res.json();
-    if (!res.ok) return { error: data.error || 'Registration failed' };
-    return { user: data.user };
-  } catch {
+    const cookieStore = await cookies();
+    cookieStore.set('auth-token', makeToken(user.id, user.email), COOKIE_OPTS);
+
+    return { user };
+  } catch (e) {
+    console.error('Register error:', e);
     return { error: 'Something went wrong. Please try again.' };
   }
 }
