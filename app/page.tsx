@@ -23,7 +23,8 @@ async function getEvents() {
       endDate: e.endDate.toISOString(),
       registrationsCount: e._count.registrations,
     }));
-  } catch {
+  } catch (err) {
+    console.error('[Home] getEvents failed:', err);
     return [];
   }
 }
