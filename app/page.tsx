@@ -6,12 +6,14 @@ import { Stats } from '@/components/landing/Stats';
 import { Footer } from '@/components/landing/Footer';
 
 async function getEvents() {
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/events`,
-    { cache: 'no-store' }
-  );
-  if (!res.ok) throw new Error(`Failed to fetch events: ${res.status}`);
-  return res.json();
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const res = await fetch(`${baseUrl}/api/events`, { cache: 'no-store' });
+    if (!res.ok) return [];
+    return res.json();
+  } catch {
+    return [];
+  }
 }
 
 export default async function Home() {
