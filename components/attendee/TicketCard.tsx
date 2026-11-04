@@ -56,11 +56,11 @@ export function TicketCard({ ticket }: { ticket: any }) {
           {showQR ? "Hide QR" : "Show QR"}
         </Button>
         <div className="flex gap-2">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href={`/events/${ticket.event.slug}`}>
+          <Link href={`/events/${ticket.event.slug}`}>
+            <Button variant="ghost" size="sm">
               <Eye className="h-4 w-4 mr-1" /> View
-            </Link>
-          </Button>
+            </Button>
+          </Link>
           <Button variant="ghost" size="sm">
             <Download className="h-4 w-4" />
           </Button>

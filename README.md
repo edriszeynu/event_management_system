@@ -16,6 +16,10 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Authentication Security
+
+Set `AUTH_SECRET` to a unique random value of at least 32 characters in each environment. Signed sessions are checked against the current active user and role in the database. If `AUTH_SECRET` is omitted locally, the database URL is used as a fallback; configure the dedicated secret for production. Existing unsigned sessions are no longer valid, so users must sign in again after deploying this change.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

@@ -42,7 +42,7 @@ export default function TicketsPage() {
       {tickets.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-muted-foreground">You haven't purchased any tickets yet.</p>
-          <a href="/events" className="text-primary hover:underline">Browse events</a>
+          <a href="/" className="text-primary hover:underline">Browse events</a>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

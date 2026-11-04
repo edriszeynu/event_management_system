@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   LineChart,
@@ -14,24 +15,32 @@ import {
 } from "recharts";
 
 export function UsersChart() {
+  const router = useRouter();
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch("/api/admin/charts/users");
-        if (!res.ok) throw new Error("Failed to fetch");
+        const res = await fetch("/api/admin/charts/users", { cache: "no-store" });
+        if (res.status === 401) {
+          router.replace("/login");
+          return;
+        }
+        if (!res.ok) {
+          throw new Error(`Chart request failed (${res.status})`);
+        }
         const chartData = await res.json();
         setData(chartData);
-      } catch (error) {
-        console.error("Error fetching chart data:", error);
+      } catch {
+        setError("User growth data is temporarily unavailable.");
       } finally {
         setLoading(false);
       }
     };
     fetchData();
-  }, []);
+  }, [router]);
 
   if (loading) {
     return (
@@ -52,6 +61,11 @@ export function UsersChart() {
         <CardTitle>User Growth Over Time</CardTitle>
       </CardHeader>
       <CardContent>
+        {error ? (
+          <div role="status" className="flex h-72 items-center justify-center text-sm text-muted-foreground">
+            {error}
+          </div>
+        ) : (
         <div className="h-72">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data}>
@@ -76,6 +90,7 @@ export function UsersChart() {
             </LineChart>
           </ResponsiveContainer>
         </div>
+        )}
       </CardContent>
     </Card>
   );

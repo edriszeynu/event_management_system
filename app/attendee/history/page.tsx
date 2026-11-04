@@ -9,12 +9,24 @@ import { Star, MessageSquare } from "lucide-react";
 import { FeedbackModal } from "@/components/attendee/FeedbackModal";
 import { useToast } from "@/hooks/use-toast";
 
+type HistoryEntry = {
+  id: string;
+  status: string;
+  event: {
+    id: string;
+    title: string;
+    startDate: string;
+  };
+  ticketTier: { name: string };
+  feedback?: { rating: number; comment?: string | null } | null;
+};
+
 export default function HistoryPage() {
   const { toast } = useToast();
-  const [history, setHistory] = useState([]);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [selectedEvent, setSelectedEvent] = useState<HistoryEntry | null>(null);
 
   const fetchHistory = async () => {
     try {
@@ -33,7 +45,7 @@ export default function HistoryPage() {
     fetchHistory();
   }, []);
 
-  const openFeedback = (event: any) => {
+  const openFeedback = (event: HistoryEntry) => {
     setSelectedEvent(event);
     setFeedbackOpen(true);
   };
@@ -54,7 +66,7 @@ export default function HistoryPage() {
         <p className="text-muted-foreground">You haven't attended any events yet.</p>
       ) : (
         <div className="space-y-4">
-          {history.map((event: any) => (
+          {history.map((event) => (
             <Card key={event.id}>
               <CardContent className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 gap-4">
                 <div>

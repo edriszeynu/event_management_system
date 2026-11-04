@@ -6,8 +6,16 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
+type NotificationItem = {
+  id: string;
+  subject: string;
+  content: string;
+  sentAt: string;
+  isRead: boolean;
+};
+
 export function NotificationList() {
-  const [notifications, setNotifications] = useState([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -52,7 +60,7 @@ export function NotificationList() {
           {notifications.length === 0 ? (
             <p className="text-center text-muted-foreground py-6">No notifications</p>
           ) : (
-            notifications.map((notif: any) => (
+            notifications.map((notif) => (
               <div key={notif.id} className="flex items-center justify-between border-b border-border pb-3 last:border-0">
                 <div>
                   <p className="font-medium">{notif.subject}</p>

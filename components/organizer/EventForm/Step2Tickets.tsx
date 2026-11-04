@@ -44,7 +44,15 @@ export function Step2Tickets() {
                 <FormItem>
                   <FormLabel>Price</FormLabel>
                   <FormControl>
-                    <Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} />
+                    <Input
+                      type="number"
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        field.onChange(raw === "" ? 0 : Number(raw));
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -53,20 +61,75 @@ export function Step2Tickets() {
           </div>
           <FormField
             control={control}
+            name={`ticketTiers.${index}.description`}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Description</FormLabel>
+                <FormControl><Input {...field} value={field.value ?? ""} placeholder="What this ticket includes" /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={control}
             name={`ticketTiers.${index}.quantityTotal`}
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Total Quantity</FormLabel>
                 <FormControl>
-                  <Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} />
+                  <Input
+                    type="number"
+                    {...field}
+                    value={field.value ?? ""}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      field.onChange(raw === "" ? 0 : Number.parseInt(raw, 10));
+                    }}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <FormField
+              control={control}
+              name={`ticketTiers.${index}.salesStart`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Sales Start</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="datetime-local"
+                      value={field.value instanceof Date ? field.value.toISOString().slice(0, 16) : ""}
+                      onChange={(event) => field.onChange(event.target.value ? new Date(event.target.value) : undefined)}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={control}
+              name={`ticketTiers.${index}.salesEnd`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Sales End</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="datetime-local"
+                      value={field.value instanceof Date ? field.value.toISOString().slice(0, 16) : ""}
+                      onChange={(event) => field.onChange(event.target.value ? new Date(event.target.value) : undefined)}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
         </div>
       ))}
-      <Button type="button" variant="outline" onClick={() => append({ name: "", price: 0, quantityTotal: 0 })}>
+      <Button type="button" variant="outline" onClick={() => append({ name: "", price: 0, quantityTotal: 0, quantitySold: 0 })}>
         <Plus className="h-4 w-4 mr-2" /> Add Tier
       </Button>
     </div>

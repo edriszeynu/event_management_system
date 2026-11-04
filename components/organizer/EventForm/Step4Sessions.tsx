@@ -8,7 +8,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { EventFormData } from "./useEventForm";
 
 export function Step4Sessions() {
-  const { control } = useFormContext<EventFormData>();
+  const { control, getValues } = useFormContext<EventFormData>();
   const { fields, append, remove } = useFieldArray({
     control,
     name: "sessions",
@@ -49,7 +49,18 @@ export function Step4Sessions() {
           />
         </div>
       ))}
-      <Button type="button" variant="outline" onClick={() => append({ title: "", description: "", startTime: new Date(), endTime: new Date() })}>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => {
+          const startTime = getValues("startDate");
+          const eventEndTime = getValues("endDate");
+          const endTime = eventEndTime > startTime
+            ? eventEndTime
+            : new Date(startTime.getTime() + 60 * 60 * 1000);
+          append({ title: "", description: "", startTime, endTime });
+        }}
+      >
         <Plus className="h-4 w-4 mr-2" /> Add Session
       </Button>
     </div>

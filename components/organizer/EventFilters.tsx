@@ -23,7 +23,7 @@ export function EventFilters({ search, onSearchChange, status, onStatusChange }:
           onChange={(e) => onSearchChange(e.target.value)}
         />
       </div>
-      <Select value={status} onValueChange={onStatusChange}>
+      <Select value={status} onValueChange={(value) => onStatusChange(value ?? "ALL")}>
         <SelectTrigger className="w-[180px]">
           <SelectValue placeholder="Status" />
         </SelectTrigger>

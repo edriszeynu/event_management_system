@@ -23,17 +23,20 @@ const useFormField = () => {
 };
 
 // ---------- Form ----------
-type FormProps = React.FormHTMLAttributes<HTMLFormElement>;
+type FormProps = React.FormHTMLAttributes<HTMLFormElement> & {
+  children?: React.ReactNode;
+};
 
 const Form = React.forwardRef<HTMLFormElement, FormProps>(
-  ({ className, onSubmit, ...props }, ref) => {
+  ({ className, onSubmit, children, ...props }, ref) => {
     return (
       <form
         ref={ref}
         className={cn("space-y-4", className)}
         onSubmit={onSubmit}
-        {...props}
-      />
+      >
+        {children}
+      </form>
     );
   }
 );
@@ -112,7 +115,7 @@ const FormLabel = React.forwardRef<HTMLLabelElement, FormLabelProps>(
         ref={ref}
         htmlFor={id}
         className={cn(
-          "text-sm font-medium text-slate-900",
+          "text-sm font-medium text-foreground",
           error && "text-red-600",
           className
         )}

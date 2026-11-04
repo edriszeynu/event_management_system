@@ -32,7 +32,7 @@ export function Step1BasicInfo() {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Category</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a category" />
@@ -71,7 +71,7 @@ export function Step1BasicInfo() {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Event Type</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select type" />
@@ -94,7 +94,15 @@ export function Step1BasicInfo() {
             <FormItem>
               <FormLabel>Max Capacity</FormLabel>
               <FormControl>
-                <Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} />
+                <Input
+                  type="number"
+                  {...field}
+                  value={Number.isFinite(field.value) ? field.value : ""}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    field.onChange(value === "" ? 0 : Number.parseInt(value, 10));
+                  }}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

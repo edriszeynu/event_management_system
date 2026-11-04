@@ -24,7 +24,7 @@ const navItems = [
   { href: "/organizer/settings", icon: Settings, label: "Settings" },
 ];
 
-export function Sidebar() {
+export function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuthStore();
@@ -36,13 +36,13 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="w-64 h-full border-r border-border bg-card flex flex-col">
-      <div className="p-6">
+    <aside className={cn("h-full border-r border-border bg-card flex flex-col transition-[width] duration-200", collapsed ? "w-16" : "w-64")}>
+      <div className={cn("p-6", collapsed && "px-4")}>
         <Link href="/organizer" className="flex items-center gap-2 text-xl font-bold text-primary">
-          <Calendar className="h-6 w-6" />
-          EventHub
+          <Calendar className="h-6 w-6 shrink-0" />
+          {!collapsed && "EventHub"}
         </Link>
-        <p className="text-sm text-muted-foreground mt-1">Organizer Dashboard</p>
+        {!collapsed && <p className="text-sm text-muted-foreground mt-1">Organizer Dashboard</p>}
       </div>
       <nav className="flex-1 px-3 space-y-1">
         {navItems.map((item) => {
@@ -53,13 +53,14 @@ export function Sidebar() {
               href={item.href}
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
+                collapsed && "justify-center px-0",
                 isActive
                   ? "bg-primary/10 text-primary font-medium"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
-              <item.icon className="h-4 w-4" />
-              {item.label}
+              <item.icon className="h-4 w-4 shrink-0" />
+              {!collapsed && item.label}
             </Link>
           );
         })}

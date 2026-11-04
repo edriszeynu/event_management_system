@@ -5,15 +5,24 @@ import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 
 export const EventCard = ({ event }: { event: Event }) => {
+  const bannerImage = event.bannerImage?.trim();
+
   return (
     <Link href={`/events/${event.slug}`}>
       <div className="bg-card rounded-xl shadow-md overflow-hidden hover:shadow-lg hover:shadow-primary/10 hover:border-primary/30 border border-border transition-all duration-300 cursor-pointer">
         <div className="relative h-48 w-full">
-          <img
-            src={event.bannerImage}
-            alt={event.title}
-            className="h-full w-full object-cover"
-          />
+          {bannerImage ? (
+            <img
+              src={bannerImage}
+              alt={event.title}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div
+              aria-hidden="true"
+              className="h-full w-full bg-linear-to-br from-primary/20 via-muted to-secondary"
+            />
+          )}
           <Badge className="absolute top-2 right-2 bg-primary text-primary-foreground hover:bg-primary/90">
             {event.eventType}
           </Badge>

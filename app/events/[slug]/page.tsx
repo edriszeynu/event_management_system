@@ -1,7 +1,7 @@
 "use client";
 
 import { notFound, useRouter } from 'next/navigation';
-import { use, useState, useEffect, useReducer } from 'react';
+import { use, useState, useEffect } from 'react';
 import Image from 'next/image';
 import { format, formatDistanceToNow } from 'date-fns';
 import {
@@ -18,8 +18,6 @@ import {
   Trash2,
   Share2,
   CalendarPlus,
-  CheckCircle,
-  CreditCard,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,82 +25,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
+import { useCartStore } from '@/stores/cart'; // ✅ Zustand store
+import Link from 'next/link';
 
-// ---------- Cart Reducer ----------
-type CartItem = {
-  tierId: string;
-  name: string;
-  price: number;
-  quantity: number;
-  max: number;
-};
-
-type CartState = {
-  items: CartItem[];
-  total: number;
-  itemCount: number;
-};
-
-type CartAction =
-  | { type: 'ADD'; payload: { tierId: string; name: string; price: number; max: number; qty: number } }
-  | { type: 'REMOVE'; payload: { tierId: string } }
-  | { type: 'UPDATE'; payload: { tierId: string; qty: number } }
-  | { type: 'CLEAR' };
-
-function cartReducer(state: CartState, action: CartAction): CartState {
-  switch (action.type) {
-    case 'ADD': {
-      const existing = state.items.find((i) => i.tierId === action.payload.tierId);
-      let newItems;
-      if (existing) {
-        newItems = state.items.map((i) =>
-          i.tierId === action.payload.tierId
-            ? { ...i, quantity: Math.min(i.quantity + action.payload.qty, i.max) }
-            : i
-        );
-      } else {
-        newItems = [
-          ...state.items,
-          {
-            tierId: action.payload.tierId,
-            name: action.payload.name,
-            price: action.payload.price,
-            quantity: action.payload.qty,
-            max: action.payload.max,
-          },
-        ];
-      }
-      const total = newItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
-      const itemCount = newItems.reduce((sum, i) => sum + i.quantity, 0);
-      return { items: newItems, total, itemCount };
-    }
-    case 'REMOVE': {
-      const newItems = state.items.filter((i) => i.tierId !== action.payload.tierId);
-      const total = newItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
-      const itemCount = newItems.reduce((sum, i) => sum + i.quantity, 0);
-      return { items: newItems, total, itemCount };
-    }
-    case 'UPDATE': {
-      const newItems = state.items.map((i) =>
-        i.tierId === action.payload.tierId
-          ? { ...i, quantity: Math.min(Math.max(1, action.payload.qty), i.max) }
-          : i
-      );
-      const total = newItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
-      const itemCount = newItems.reduce((sum, i) => sum + i.quantity, 0);
-      return { items: newItems, total, itemCount };
-    }
-    case 'CLEAR':
-      return { items: [], total: 0, itemCount: 0 };
-    default:
-      return state;
-  }
-}
-
-// ---------- Main Component ----------
 export default function EventDetail({ params }: { params: Promise<{ slug: string }> }) {
   const router = useRouter();
   const { slug } = use(params);
@@ -110,19 +37,40 @@ export default function EventDetail({ params }: { params: Promise<{ slug: string
 
   const [event, setEvent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [cartState, dispatch] = useReducer(cartReducer, { items: [], total: 0, itemCount: 0 });
   const [quantities, setQuantities] = useState<Record<string, number>>({});
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [checkoutStep, setCheckoutStep] = useState<'review' | 'payment' | 'confirmation'>('review');
   const [timeLeft, setTimeLeft] = useState('');
+  const [waitlistEntry, setWaitlistEntry] = useState<{ id: string; position: number } | null>(null);
+  const [waitlistLoading, setWaitlistLoading] = useState(false);
+  const [waitlistJoined, setWaitlistJoined] = useState(false);
 
+  // Zustand cart
+  const { items, addItem, removeItem, updateQuantity, clearCart, getTotal, getItemCount } = useCartStore();
+  const cartItemCount = getItemCount();
+  const cartTotal = getTotal();
+
+  // Fetch event data
   useEffect(() => {
     fetch(`/api/events/${slug}`)
-      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
-      .then((data) => { setEvent(data); setLoading(false); })
-      .catch(() => { setLoading(false); });
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((data) => {
+        setEvent(data);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, [slug]);
 
+  useEffect(() => {
+    fetch(`/api/events/${slug}/waitlist`)
+      .then(async (response) => {
+        if (response.ok) {
+          const data = await response.json();
+          setWaitlistEntry(data.entry);
+        }
+      })
+      .catch(() => undefined);
+  }, [slug]);
+
+  // Init quantities
   useEffect(() => {
     if (event?.ticketTiers) {
       setQuantities(
@@ -131,6 +79,7 @@ export default function EventDetail({ params }: { params: Promise<{ slug: string
     }
   }, [event]);
 
+  // Countdown timer
   useEffect(() => {
     if (!event?.startDate) return;
     const interval = setInterval(() => {
@@ -145,14 +94,21 @@ export default function EventDetail({ params }: { params: Promise<{ slug: string
     return () => clearInterval(interval);
   }, [event?.startDate]);
 
-  if (loading) return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-    </div>
-  );
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
   if (!event) return notFound();
 
+  const bannerImage = typeof event.bannerImage === 'string' ? event.bannerImage.trim() : '';
   const isVirtual = event.eventType === 'VIRTUAL';
+  const eventSoldOut = event.ticketTiers.length > 0 && !event.ticketTiers.some(
+    (tier: { status: string; quantitySold: number; quantityTotal: number }) =>
+      tier.status === 'ACTIVE' && tier.quantitySold < tier.quantityTotal
+  );
   const eventDate = format(new Date(event.startDate), 'EEEE, MMM d, yyyy');
   const eventTime = format(new Date(event.startDate), 'h:mm a');
   const endTime = format(new Date(event.endDate), 'h:mm a');
@@ -161,7 +117,7 @@ export default function EventDetail({ params }: { params: Promise<{ slug: string
   const handleQuantityChange = (tierId: string, delta: number) => {
     setQuantities((prev) => {
       const newVal = Math.max(1, (prev[tierId] || 1) + delta);
-      const tier = event.ticketTiers.find((t) => t.id === tierId);
+      const tier = event.ticketTiers.find((t: any) => t.id === tierId);
       const max = tier ? tier.quantityTotal - tier.quantitySold : 1;
       return { ...prev, [tierId]: Math.min(newVal, max) };
     });
@@ -169,7 +125,7 @@ export default function EventDetail({ params }: { params: Promise<{ slug: string
 
   const handleAddToCart = (tierId: string) => {
     const qty = quantities[tierId] || 1;
-    const tier = event.ticketTiers.find((t) => t.id === tierId);
+    const tier = event.ticketTiers.find((t: any) => t.id === tierId);
     if (!tier) return;
     const max = tier.quantityTotal - tier.quantitySold;
     const actualQty = Math.min(qty, max);
@@ -177,15 +133,15 @@ export default function EventDetail({ params }: { params: Promise<{ slug: string
       toast({ title: 'Sold out', description: 'No tickets available.', variant: 'destructive' });
       return;
     }
-    dispatch({
-      type: 'ADD',
-      payload: {
-        tierId: tier.id,
-        name: tier.name,
-        price: tier.price,
-        max,
-        qty: actualQty,
-      },
+    addItem({
+      tierId: tier.id,
+      name: tier.name,
+      price: tier.price,
+      quantity: actualQty,
+      max: max,
+      eventId: event.id,
+      eventTitle: event.title,
+      eventSlug: event.slug,
     });
     toast({
       title: 'Added to cart',
@@ -194,126 +150,121 @@ export default function EventDetail({ params }: { params: Promise<{ slug: string
     });
   };
 
+  const handleWaitlist = async () => {
+    setWaitlistLoading(true);
+    try {
+      const response = await fetch(`/api/events/${slug}/waitlist`, {
+        method: waitlistEntry ? 'DELETE' : 'POST',
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Could not update your waitlist entry');
+      if (waitlistEntry) {
+        setWaitlistEntry(null);
+        setWaitlistJoined(false);
+        toast({ title: 'Left waitlist', variant: 'success' });
+      } else {
+        setWaitlistJoined(true);
+        toast({ title: 'Joined waitlist', description: 'You are in line for this event.', variant: 'success' });
+        const statusResponse = await fetch(`/api/events/${slug}/waitlist`);
+        if (statusResponse.ok) setWaitlistEntry((await statusResponse.json()).entry);
+      }
+    } catch (error) {
+      toast({
+        title: 'Waitlist update failed',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setWaitlistLoading(false);
+    }
+  };
+
   const handleRemoveFromCart = (tierId: string) => {
-    dispatch({ type: 'REMOVE', payload: { tierId } });
+    removeItem(tierId);
     toast({ title: 'Removed', description: 'Item removed from cart.' });
   };
 
   const handleUpdateCart = (tierId: string, qty: number) => {
-    dispatch({ type: 'UPDATE', payload: { tierId, qty } });
+    updateQuantity(tierId, qty);
   };
 
-  const handleCheckout = () => {
-    if (cartState.itemCount === 0) {
-      toast({ title: 'Cart empty', description: 'Please add tickets first.', variant: 'destructive' });
-      return;
-    }
-    setCheckoutOpen(true);
-    setCheckoutStep('review');
-  };
+  const handleShare = async () => {
+    const shareData = {
+      title: event.title,
+      text: event.description,
+      url: window.location.href,
+    };
 
-  const handlePayment = () => {
-    setCheckoutStep('payment');
-    setTimeout(() => {
-      setCheckoutStep('confirmation');
-      dispatch({ type: 'CLEAR' });
-      toast({ title: '🎉 Order confirmed!', description: 'Your tickets are on the way.', variant: 'success' });
-    }, 1500);
-  };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        return;
+      }
 
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: event.title,
-        text: event.description,
-        url: window.location.href,
-      });
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-      toast({ title: 'Link copied!', description: 'Share it with your friends.' });
+      await navigator.clipboard.writeText(shareData.url);
+      toast({ title: 'Link copied', description: 'Event link copied to your clipboard.', variant: 'success' });
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return;
+      toast({ title: 'Could not share event', description: 'Copy the page address and share it with your friends.', variant: 'destructive' });
     }
   };
 
   const handleAddToCalendar = () => {
-    toast({ title: 'Calendar invite', description: 'Download .ics file (placeholder).' });
+    const escapeIcsText = (value: string) => value
+      .replace(/\\/g, '\\\\')
+      .replace(/\n/g, '\\n')
+      .replace(/,/g, '\\,')
+      .replace(/;/g, '\\;');
+    const toIcsDate = (value: string) => new Date(value)
+      .toISOString()
+      .replace(/[-:]/g, '')
+      .replace(/\.\d{3}/, '');
+    const location = isVirtual ? event.virtualLink || 'Online' : event.venueAddress || '';
+    const calendarEvent = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//EventHub//Event Calendar//EN',
+      'CALSCALE:GREGORIAN',
+      'BEGIN:VEVENT',
+      `UID:${event.id}@eventhub`,
+      `DTSTAMP:${toIcsDate(new Date().toISOString())}`,
+      `DTSTART:${toIcsDate(event.startDate)}`,
+      `DTEND:${toIcsDate(event.endDate)}`,
+      `SUMMARY:${escapeIcsText(event.title)}`,
+      `DESCRIPTION:${escapeIcsText(event.description)}`,
+      `LOCATION:${escapeIcsText(location)}`,
+      `URL:${window.location.href}`,
+      'END:VEVENT',
+      'END:VCALENDAR',
+      '',
+    ].join('\r\n');
+    const file = new Blob([calendarEvent], { type: 'text/calendar;charset=utf-8' });
+    const downloadUrl = URL.createObjectURL(file);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = `${event.slug}.ics`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+    toast({ title: 'Calendar invite downloaded', description: 'Add the event to your calendar from the downloaded file.', variant: 'success' });
   };
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      {/* Floating cart button */}
-      <div className="fixed bottom-6 right-6 z-50">
-        <Sheet>
-          <SheetTrigger
-            render={
-              <button className="relative inline-flex items-center justify-center rounded-full shadow-xl bg-blue-600 hover:bg-blue-700 text-white h-14 w-14 transition-colors" />
-            }
-          >
-              <ShoppingCart className="h-5 w-5" />
-              {cartState.itemCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center">
-                  {cartState.itemCount}
-                </span>
-              )}
-          </SheetTrigger>
-          <SheetContent className="w-full sm:max-w-md">
-            <SheetHeader>
-              <SheetTitle>Your Cart</SheetTitle>
-            </SheetHeader>
-            <div className="mt-6 flex-1 overflow-y-auto">
-              {cartState.items.length === 0 ? (
-                <p className="text-center text-muted-foreground py-12">Your cart is empty.</p>
-              ) : (
-                <div className="space-y-4">
-                  {cartState.items.map((item) => (
-                    <div key={item.tierId} className="flex items-center gap-4 border-b pb-4">
-                      <div className="flex-1">
-                        <p className="font-semibold">{item.name}</p>
-                        <p className="text-sm text-muted-foreground">${item.price.toFixed(2)} each</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleUpdateCart(item.tierId, item.quantity - 1)}
-                        >
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                        <span className="w-6 text-center">{item.quantity}</span>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleUpdateCart(item.tierId, item.quantity + 1)}
-                          disabled={item.quantity >= item.max}
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-red-500"
-                          onClick={() => handleRemoveFromCart(item.tierId)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                  <Separator />
-                  <div className="flex justify-between font-semibold text-lg">
-                    <span>Total</span>
-                    <span>${cartState.total.toFixed(2)}</span>
-                  </div>
-                  <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white" onClick={handleCheckout}>
-                    Proceed to Checkout
-                  </Button>
-                </div>
-              )}
-            </div>
-          </SheetContent>
-        </Sheet>
-      </div>
+      {/* Floating cart button (links to /cart) */}
+      <Link href="/cart">
+        <div className="fixed bottom-6 right-6 z-50 cursor-pointer">
+          <Button size="lg" className="rounded-full shadow-xl bg-primary hover:bg-primary/90 text-white relative">
+            <ShoppingCart className="h-5 w-5" />
+            {cartItemCount > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center">
+                {cartItemCount}
+              </span>
+            )}
+          </Button>
+        </div>
+      </Link>
 
       {/* Back button */}
       <Button
@@ -332,16 +283,20 @@ export default function EventDetail({ params }: { params: Promise<{ slug: string
       </div>
 
       {/* Hero */}
-      <section className="relative overflow-hidden rounded-3xl shadow-2xl">
+      <section className="event-detail-enter relative overflow-hidden rounded-3xl shadow-2xl">
         <div className="relative h-[28rem] w-full md:h-[34rem]">
-          <Image
-            src={event.bannerImage}
-            alt={event.title}
-            fill
-            className="object-cover brightness-[0.7]"
-            priority
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+          {bannerImage ? (
+            <Image
+              src={bannerImage}
+              alt={event.title}
+              fill
+              className="event-image-settle object-cover brightness-[0.85]"
+              priority
+            />
+          ) : (
+            <div aria-hidden="true" className="h-full w-full bg-linear-to-br from-slate-800 via-slate-900 to-slate-950" />
+          )}
+          <div className="absolute inset-0 bg-linear-to-t from-slate-950/90 via-slate-950/20 to-transparent" />
         </div>
         <div className="absolute inset-x-0 bottom-0 px-6 pb-8 pt-8 text-white sm:px-10 lg:pb-12">
           <div className="flex flex-wrap items-center gap-3">
@@ -396,7 +351,7 @@ export default function EventDetail({ params }: { params: Promise<{ slug: string
       {/* Main two‑column layout */}
       <div className="mt-10 grid grid-cols-1 gap-10 lg:grid-cols-[1.7fr_1fr]">
         {/* Left column */}
-        <div className="space-y-8">
+        <div className="event-detail-enter event-detail-enter-late space-y-8">
           {/* About */}
           <Card className="border-0 shadow-md">
             <CardContent className="p-6 sm:p-8">
@@ -437,7 +392,7 @@ export default function EventDetail({ params }: { params: Promise<{ slug: string
               <CardContent className="p-6 sm:p-8">
                 <h2 className="text-2xl font-semibold tracking-tight">Featured Speakers</h2>
                 <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {event.speakers.map((speaker) => (
+                  {event.speakers.map((speaker: any) => (
                     <div key={speaker.id} className="flex items-center gap-4 p-3 rounded-xl bg-muted/30">
                       <Avatar className="h-12 w-12">
                         <AvatarImage src={speaker.avatar} alt={speaker.name} />
@@ -460,8 +415,8 @@ export default function EventDetail({ params }: { params: Promise<{ slug: string
               <CardContent className="p-6 sm:p-8">
                 <h2 className="text-2xl font-semibold tracking-tight">Event Schedule</h2>
                 <div className="mt-4 space-y-4">
-                  {event.sessions.map((session) => {
-                    const speaker = event.speakers?.find((s) => s.id === session.speakerId);
+                  {event.sessions.map((session: any) => {
+                    const speaker = event.speakers?.find((s: any) => s.id === session.speakerId);
                     return (
                       <div key={session.id} className="border-l-4 border-primary pl-4 py-2">
                         <p className="font-semibold">{session.title}</p>
@@ -499,7 +454,7 @@ export default function EventDetail({ params }: { params: Promise<{ slug: string
         </div>
 
         {/* Right column – Ticket sidebar */}
-        <div className="lg:sticky lg:top-8 lg:self-start">
+        <div className="event-detail-enter event-detail-enter-later lg:sticky lg:top-8 lg:self-start">
           <Card className="border-0 shadow-xl shadow-primary/10">
             <CardContent className="p-6">
               <div className="mb-6 flex items-center justify-between">
@@ -508,12 +463,12 @@ export default function EventDetail({ params }: { params: Promise<{ slug: string
                   <p className="text-2xl font-bold">Select Your Pass</p>
                 </div>
                 <Badge variant="outline" className="text-xs">
-                  {event.ticketTiers.reduce((sum, t) => sum + t.quantitySold, 0)} sold
+                  {event.ticketTiers.reduce((sum: number, t: any) => sum + t.quantitySold, 0)} sold
                 </Badge>
               </div>
 
               <div className="space-y-4">
-                {event.ticketTiers.map((tier) => {
+                {event.ticketTiers.map((tier: any) => {
                   const qty = quantities[tier.id] || 1;
                   const maxAvailable = tier.quantityTotal - tier.quantitySold;
                   const isSoldOut = maxAvailable <= 0;
@@ -567,7 +522,7 @@ export default function EventDetail({ params }: { params: Promise<{ slug: string
                               </button>
                             </div>
                             <Button
-                              className="ml-auto bg-blue-600 hover:bg-blue-700 text-white group-hover:shadow-md transition"
+                              className="ml-auto bg-primary text-primary-foreground hover:bg-primary/90 group-hover:shadow-md transition"
                               onClick={() => handleAddToCart(tier.id)}
                             >
                               Add to Cart
@@ -576,19 +531,32 @@ export default function EventDetail({ params }: { params: Promise<{ slug: string
                           </div>
                         </>
                       )}
+                      {isSoldOut && eventSoldOut && (
+                        <div className="mt-3 border-t pt-3">
+                          <Button
+                            variant={waitlistEntry ? 'outline' : 'default'}
+                            className="w-full"
+                            disabled={waitlistLoading || waitlistJoined}
+                            onClick={handleWaitlist}
+                          >
+                            {waitlistLoading ? 'Updating...' : waitlistEntry ? `On waitlist · #${waitlistEntry.position} · Leave` : waitlistJoined ? 'Joined waitlist' : 'Join waitlist'}
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
               </div>
 
-              <Button
-                className="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white"
-                size="lg"
-                onClick={handleCheckout}
-              >
-                <ShoppingCart className="mr-2 h-5 w-5" />
-                Checkout ({cartState.itemCount} items)
-              </Button>
+              <Link href="/cart">
+                <Button
+                  className="mt-6 w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                  size="lg"
+                >
+                  <ShoppingCart className="mr-2 h-5 w-5" />
+                  View Cart ({cartItemCount} items)
+                </Button>
+              </Link>
               <p className="mt-3 text-center text-xs text-muted-foreground">
                 Secure checkout powered by Stripe
               </p>

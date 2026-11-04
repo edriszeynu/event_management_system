@@ -2,14 +2,14 @@
 
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { CategoryForm } from "@/components/admin/CategoryForm";
+import { CategoryForm, type CategoryFormData } from "@/components/admin/CategoryForm";
 import { useToast } from "@/hooks/use-toast";
 
 export default function EditCategoryPage() {
   const params = useParams();
   const id = params?.id as string;
   const { toast } = useToast();
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<CategoryFormData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -33,6 +33,12 @@ export default function EditCategoryPage() {
       <div className="h-10 w-48 bg-muted animate-pulse rounded" />
       <div className="h-96 bg-muted animate-pulse rounded-xl" />
     </div>;
+  }
+
+  if (!data) {
+    return <p role="alert" className="mx-auto max-w-2xl text-sm text-destructive">
+      Category could not be loaded. Return to the categories list and try again.
+    </p>;
   }
 
   return (

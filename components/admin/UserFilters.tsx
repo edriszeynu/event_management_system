@@ -32,7 +32,7 @@ export function UserFilters({
           onChange={(e) => onSearchChange(e.target.value)}
         />
       </div>
-      <Select value={role} onValueChange={onRoleChange}>
+      <Select value={role} onValueChange={(value) => onRoleChange(value ?? "ALL")}>
         <SelectTrigger className="w-[180px]">
           <SelectValue placeholder="Role" />
         </SelectTrigger>
@@ -44,7 +44,7 @@ export function UserFilters({
           <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
         </SelectContent>
       </Select>
-      <Select value={status} onValueChange={onStatusChange}>
+      <Select value={status} onValueChange={(value) => onStatusChange(value ?? "ALL")}>
         <SelectTrigger className="w-[180px]">
           <SelectValue placeholder="Status" />
         </SelectTrigger>

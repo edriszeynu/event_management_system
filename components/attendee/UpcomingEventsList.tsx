@@ -9,8 +9,14 @@ import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowRight } from "lucide-react";
 
+type UpcomingRegistration = {
+  id: string;
+  event: { title: string; slug: string; startDate: string };
+  ticketTier: { name: string };
+};
+
 export function UpcomingEventsList() {
-  const [events, setEvents] = useState([]);
+  const [events, setEvents] = useState<UpcomingRegistration[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -55,7 +61,7 @@ export function UpcomingEventsList() {
           {events.length === 0 ? (
             <p className="text-center text-muted-foreground py-6">No upcoming events</p>
           ) : (
-            events.map((event: any) => (
+            events.map((event) => (
               <div key={event.id} className="flex items-center justify-between border-b border-border pb-3 last:border-0">
                 <div>
                   <p className="font-medium">{event.event.title}</p>

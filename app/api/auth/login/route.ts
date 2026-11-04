@@ -3,13 +3,14 @@ import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
 import prisma from '@/lib/prisma';
 import { loginSchema } from '@/lib/validations/auth';
+import { createSessionToken } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const result = loginSchema.safeParse(body);
     if (!result.success) {
-      return NextResponse.json({ error: result.error.errors[0].message }, { status: 400 });
+      return NextResponse.json({ error: result.error.issues[0]?.message ?? 'Invalid login details' }, { status: 400 });
     }
 
     const { email, password } = result.data;
@@ -28,9 +29,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    const token = Buffer.from(JSON.stringify({ id: user.id, email: user.email })).toString('base64');
     const cookieStore = await cookies();
-    cookieStore.set('auth-token', token, {
+    cookieStore.set('auth-token', createSessionToken(user.id), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

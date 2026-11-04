@@ -1,25 +1,13 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import prisma from '@/lib/prisma';
-
-async function getOrganizerFromCookie() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('auth-token')?.value;
-  if (!token) return null;
-  try {
-    const { id } = JSON.parse(Buffer.from(token, 'base64').toString());
-    return id as string;
-  } catch {
-    return null;
-  }
-}
+import { getAuthenticatedUser } from '@/lib/auth';
 
 export async function GET() {
-  const organizerId = await getOrganizerFromCookie();
-  if (!organizerId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const organizer = await getAuthenticatedUser(['ORGANIZER']);
+  if (!organizer) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const registrations = await prisma.registration.findMany({
-    where: { event: { organizerId } },
+    where: { event: { organizerId: organizer.id } },
     include: {
       user: { select: { firstName: true, lastName: true, email: true } },
       event: { select: { title: true } },

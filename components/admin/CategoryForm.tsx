@@ -17,7 +17,7 @@ const categorySchema = z.object({
   description: z.string().optional(),
 });
 
-type CategoryFormData = z.infer<typeof categorySchema>;
+export type CategoryFormData = z.infer<typeof categorySchema>;
 
 export function CategoryForm({ initialData }: { initialData?: CategoryFormData }) {
   const router = useRouter();

@@ -8,19 +8,29 @@ import { TicketDistributionChart } from "@/components/organizer/TicketDistributi
 import { RevenueChart } from "@/components/organizer/RevenueChart";
 import { useToast } from "@/hooks/use-toast";
 
+type AnalyticsData = {
+  totalRegistrations: number;
+  revenue: number;
+  checkInRate: number;
+  avgTicketPrice: number;
+  registrationsOverTime: Array<{ date: string; registrations: number }>;
+  ticketDistribution: Array<{ name: string; value: number }>;
+  revenueOverTime: Array<{ date: string; revenue: number }>;
+};
+
 export default function AnalyticsPage() {
   const params = useParams();
   const eventId = params?.id as string;
   const { toast } = useToast();
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
-        const res = await fetch(`/api/events/${eventId}/analytics`);
+        const res = await fetch(`/api/organizer/events/${eventId}/analytics`);
         if (!res.ok) throw new Error("Failed to fetch");
-        const analyticsData = await res.json();
+        const analyticsData: AnalyticsData = await res.json();
         setData(analyticsData);
       } catch (error) {
         toast({
@@ -47,6 +57,10 @@ export default function AnalyticsPage() {
         <div className="h-72 bg-muted animate-pulse rounded-xl" />
       </div>
     </div>;
+  }
+
+  if (!data) {
+    return <p role="alert" className="text-sm text-destructive">Analytics could not be loaded.</p>;
   }
 
   return (

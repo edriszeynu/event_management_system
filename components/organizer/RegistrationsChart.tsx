@@ -18,17 +18,21 @@ interface ChartData {
   registrations: number;
 }
 
-export function RegistrationsChart() {
-  const [data, setData] = useState<ChartData[]>([]);
-  const [loading, setLoading] = useState(true);
+export function RegistrationsChart({ data }: { data?: ChartData[] }) {
+  const [organizerData, setOrganizerData] = useState<ChartData[]>([]);
+  const [loading, setLoading] = useState(!data);
 
   useEffect(() => {
+    if (data) {
+      setLoading(false);
+      return;
+    }
+
     const fetchData = async () => {
       try {
-        const res = await fetch("/api/organizer/registrations-chart");
-        if (!res.ok) throw new Error("Failed to fetch");
-        const chartData = await res.json();
-        setData(chartData);
+        const response = await fetch("/api/organizer/registrations-chart");
+        if (!response.ok) throw new Error("Failed to fetch registration chart data");
+        setOrganizerData(await response.json());
       } catch (error) {
         console.error("Error fetching chart data:", error);
       } finally {
@@ -36,17 +40,15 @@ export function RegistrationsChart() {
       }
     };
     fetchData();
-  }, []);
+  }, [data]);
+
+  const chartData = data ?? organizerData;
 
   if (loading) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle>Registrations Trend</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-72 bg-muted animate-pulse rounded" />
-        </CardContent>
+        <CardHeader><CardTitle>Registrations Trend</CardTitle></CardHeader>
+        <CardContent><div className="h-72 bg-muted animate-pulse rounded" /></CardContent>
       </Card>
     );
   }
@@ -59,7 +61,7 @@ export function RegistrationsChart() {
       <CardContent>
         <div className="h-72">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data}>
+            <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
               <XAxis dataKey="date" className="text-xs text-muted-foreground" />
               <YAxis className="text-xs text-muted-foreground" />

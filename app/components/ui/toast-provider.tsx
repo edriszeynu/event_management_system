@@ -72,9 +72,9 @@ function ToastContainer({ toasts, removeToast }: { toasts: Toast[]; removeToast:
 
 function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
   const variantStyles = {
-    default: 'bg-white border-slate-200 text-slate-900',
-    destructive: 'bg-red-50 border-red-200 text-red-900',
-    success: 'bg-green-50 border-green-200 text-green-900',
+    default: 'bg-popover border-border text-popover-foreground',
+    destructive: 'bg-red-50 border-red-200 text-red-900 dark:bg-red-950/40 dark:border-red-900 dark:text-red-100',
+    success: 'bg-green-50 border-green-200 text-green-900 dark:bg-green-950/40 dark:border-green-900 dark:text-green-100',
   };
 
   return (

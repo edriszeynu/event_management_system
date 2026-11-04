@@ -8,13 +8,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { registerSchema, RegisterInput } from '@/lib/validations/auth';
 import { useAuthStore } from '@/stores/auth';
 import { registerAction } from '@/app/actions/auth';
+import { AuthShell } from '@/components/auth/AuthShell';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-} from '@/components/ui/card';
 import {
   Form,
   FormControl,
@@ -24,11 +19,11 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Mail, Lock, User, UserPlus, ArrowRight } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight } from 'lucide-react';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { login, setLoading, isLoading } = useAuthStore();
+  const { setLoading, isLoading } = useAuthStore();
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
 
@@ -48,185 +43,182 @@ export default function RegisterPage() {
     setLoading(true);
 
     startTransition(async () => {
-      const formData = new FormData();
-      formData.append('firstName', data.firstName);
-      formData.append('lastName', data.lastName);
-      formData.append('email', data.email);
-      formData.append('password', data.password);
-      formData.append('confirmPassword', data.confirmPassword);
+      try {
+        const formData = new FormData();
+        formData.append('firstName', data.firstName);
+        formData.append('lastName', data.lastName);
+        formData.append('email', data.email);
+        formData.append('password', data.password);
+        formData.append('confirmPassword', data.confirmPassword);
 
-      const result = await registerAction(formData);
+        const result = await registerAction(formData);
 
-      if (result?.error) {
-        setError(result.error);
+        if (result?.error) {
+          setError(result.error);
+          return;
+        }
+
+        if (result?.user) {
+          router.push('/login');
+        }
+      } catch {
+        setError('Unable to create your account right now. Please try again.');
+      } finally {
         setLoading(false);
-        return;
       }
-
-      if (result?.user) {
-        login(result.user);
-        router.push('/');
-      }
-      setLoading(false);
     });
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-background">
-      <Card className="w-full max-w-md border border-border/50 shadow-2xl shadow-primary/5 rounded-3xl bg-card">
-        <CardHeader className="space-y-1 text-center pb-6">
-          <div className="flex justify-center mb-2">
-            <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-              <UserPlus className="h-6 w-6" />
-            </div>
-          </div>
-          <h2 className="text-3xl font-bold tracking-tight">Create Account</h2>
-          <p className="text-muted-foreground">Join thousands of event enthusiasts</p>
-        </CardHeader>
-        <CardContent>
-          <Form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              {error && (
-                <div className="rounded-xl bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-destructive inline-block" />
-                  {error}
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-3">
-                <FormField
-                  control={form.control}
-                  name="firstName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>First Name</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            placeholder="John"
-                            className="pl-9 h-11 rounded-xl border-border bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                            {...field}
-                            disabled={isPending || isLoading}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="lastName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Last Name</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Doe"
-                          className="h-11 rounded-xl border-border bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                          {...field}
-                          disabled={isPending || isLoading}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          placeholder="you@example.com"
-                          className="pl-9 h-11 rounded-xl border-border bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                          {...field}
-                          disabled={isPending || isLoading}
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          type="password"
-                          placeholder="••••••••"
-                          className="pl-9 h-11 rounded-xl border-border bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                          {...field}
-                          disabled={isPending || isLoading}
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="confirmPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Confirm Password</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          type="password"
-                          placeholder="••••••••"
-                          className="pl-9 h-11 rounded-xl border-border bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                          {...field}
-                          disabled={isPending || isLoading}
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button
-                type="submit"
-                className="w-full h-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-lg shadow-primary/30"
-                size="lg"
-                disabled={isPending || isLoading}
-              >
-                {isPending ? (
-                  <span className="flex items-center gap-2">
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    Creating account...
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-2">
-                    Create Account
-                    <ArrowRight className="h-4 w-4" />
-                  </span>
-                )}
-              </Button>
-          </Form>
-        </CardContent>
-        <CardFooter className="flex justify-center text-sm text-muted-foreground">
+    <AuthShell
+      eyebrow="Join EventHub"
+      title="Make room for more."
+      description="Create your account and discover experiences worth showing up for."
+      footer={
+        <>
           Already have an account?{' '}
-          <Link
-            href="/login"
-            className="ml-1 text-primary hover:underline font-medium"
-          >
+          <Link href="/login" className="font-semibold text-primary hover:text-primary/80">
             Sign in
           </Link>
-        </CardFooter>
-      </Card>
-    </div>
+        </>
+      }
+    >
+      <Form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        {error && (
+          <div role="alert" className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
+            <span className="size-1.5 rounded-full bg-destructive" />
+            {error}
+          </div>
+        )}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="firstName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm font-medium text-foreground">First name</FormLabel>
+                <FormControl>
+                  <div className="relative">
+                    <User aria-hidden="true" className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      autoComplete="given-name"
+                      placeholder="Jordan"
+                      className="h-12 rounded-lg border-input bg-background pl-10 text-sm text-foreground shadow-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/20"
+                      {...field}
+                      disabled={isPending || isLoading}
+                    />
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="lastName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-sm font-medium text-foreground">Last name</FormLabel>
+                <FormControl>
+                  <Input
+                    autoComplete="family-name"
+                    placeholder="Lee"
+                    className="h-12 rounded-lg border-input bg-background px-3 text-sm text-foreground shadow-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/20"
+                    {...field}
+                    disabled={isPending || isLoading}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-sm font-medium text-foreground">Email address</FormLabel>
+              <FormControl>
+                <div className="relative">
+                  <Mail aria-hidden="true" className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    type="email"
+                    autoComplete="email"
+                    placeholder="you@example.com"
+                    className="h-12 rounded-lg border-input bg-background pl-10 text-sm text-foreground shadow-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/20"
+                    {...field}
+                    disabled={isPending || isLoading}
+                  />
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-sm font-medium text-foreground">Password</FormLabel>
+              <FormControl>
+                <div className="relative">
+                  <Lock aria-hidden="true" className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder="Create a password"
+                    className="h-12 rounded-lg border-input bg-background pl-10 text-sm text-foreground shadow-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/20"
+                    {...field}
+                    disabled={isPending || isLoading}
+                  />
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="confirmPassword"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-sm font-medium text-foreground">Confirm password</FormLabel>
+              <FormControl>
+                <div className="relative">
+                  <Lock aria-hidden="true" className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder="Enter your password again"
+                    className="h-12 rounded-lg border-input bg-background pl-10 text-sm text-foreground shadow-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/20"
+                    {...field}
+                    disabled={isPending || isLoading}
+                  />
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button
+          type="submit"
+          className="mt-1 h-12 w-full rounded-lg bg-primary text-sm font-semibold text-primary-foreground shadow-none hover:bg-primary/90"
+          disabled={isPending || isLoading}
+        >
+          {isPending ? (
+            <span className="flex items-center gap-2">
+              <span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              Creating account...
+            </span>
+          ) : (
+            <span className="flex items-center gap-2">
+              Create account <ArrowRight className="size-4" />
+            </span>
+          )}
+        </Button>
+      </Form>
+    </AuthShell>
   );
 }

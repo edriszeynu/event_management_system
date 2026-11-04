@@ -110,6 +110,7 @@ model Event {
 
   // Nested Data (Relations)
   ticketTiers   TicketTier[]
+  speakers      Speaker[]
   sessions      Session[]
   registrations Registration[]
   feedback      Feedback[]
@@ -221,6 +222,8 @@ model Session {
 
 model Speaker {
   id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  eventId       String?   @db.ObjectId
+  event         Event?    @relation(fields: [eventId], references: [id])
   userId        String?   @unique @db.ObjectId // Links to User (if they have an account)
   user          User?     @relation(fields: [userId], references: [id])
 
@@ -232,6 +235,8 @@ model Speaker {
   socialLinks   Json?     // Example: { "twitter": "...", "linkedin": "..." }
 
   sessions      Session[]
+
+  @@index([eventId])
 
   @@map("speakers")
 }

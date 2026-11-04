@@ -4,10 +4,7 @@ import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
 import prisma from '@/lib/prisma';
 import { loginSchema, registerSchema } from '@/lib/validations/auth';
-
-function makeToken(id: string, email: string) {
-  return Buffer.from(JSON.stringify({ id, email })).toString('base64');
-}
+import { createSessionToken } from '@/lib/auth';
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -22,7 +19,7 @@ export async function loginAction(formData: FormData) {
   const password = formData.get('password') as string;
 
   const result = loginSchema.safeParse({ email, password });
-  if (!result.success) return { error: result.error.errors[0].message };
+  if (!result.success) return { error: result.error.issues[0]?.message ?? 'Invalid login details' };
 
   try {
     const user = await prisma.user.findUnique({ where: { email } });
@@ -32,7 +29,7 @@ export async function loginAction(formData: FormData) {
     if (!valid) return { error: 'Invalid credentials' };
 
     const cookieStore = await cookies();
-    cookieStore.set('auth-token', makeToken(user.id, user.email), COOKIE_OPTS);
+    cookieStore.set('auth-token', createSessionToken(user.id), COOKIE_OPTS);
 
     return {
       user: {
@@ -58,7 +55,7 @@ export async function registerAction(formData: FormData) {
   const confirmPassword = formData.get('confirmPassword') as string;
 
   const result = registerSchema.safeParse({ firstName, lastName, email, password, confirmPassword });
-  if (!result.success) return { error: result.error.errors[0].message };
+  if (!result.success) return { error: result.error.issues[0]?.message ?? 'Invalid registration details' };
 
   try {
     const existing = await prisma.user.findUnique({ where: { email } });
@@ -71,7 +68,7 @@ export async function registerAction(formData: FormData) {
     });
 
     const cookieStore = await cookies();
-    cookieStore.set('auth-token', makeToken(user.id, user.email), COOKIE_OPTS);
+    cookieStore.set('auth-token', createSessionToken(user.id), COOKIE_OPTS);
 
     return { user };
   } catch (e) {

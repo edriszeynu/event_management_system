@@ -16,6 +16,7 @@ export default function AdminLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     if (!_hasHydrated) return;
@@ -45,11 +46,16 @@ export default function AdminLayout({
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <div className="hidden lg:block">
-        <Sidebar />
+        <Sidebar collapsed={sidebarCollapsed} />
       </div>
       <MobileNav open={sidebarOpen} onOpenChange={setSidebarOpen} />
       <div className="flex flex-col flex-1 overflow-hidden">
-        <Header title={getPageTitle()} onMenuClick={() => setSidebarOpen(true)} />
+        <Header
+          title={getPageTitle()}
+          onMenuClick={() => setSidebarOpen(true)}
+          onSidebarToggle={() => setSidebarCollapsed((collapsed) => !collapsed)}
+          sidebarCollapsed={sidebarCollapsed}
+        />
         <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-muted/30">
           {children}
         </main>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Menu, Search } from "lucide-react";
+import { Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -21,9 +21,11 @@ import Link from "next/link";
 interface HeaderProps {
   title: string;
   onMenuClick: () => void;
+  onSidebarToggle?: () => void;
+  sidebarCollapsed?: boolean;
 }
 
-export function Header({ title, onMenuClick }: HeaderProps) {
+export function Header({ title, onMenuClick, onSidebarToggle, sidebarCollapsed = false }: HeaderProps) {
   const router = useRouter();
   const { user, logout } = useAuthStore();
 
@@ -37,6 +39,18 @@ export function Header({ title, onMenuClick }: HeaderProps) {
     <header className="border-b border-border bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 sticky top-0 z-30">
       <div className="flex items-center justify-between h-16 px-4 md:px-6">
         <div className="flex items-center gap-4">
+          {onSidebarToggle && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hidden lg:inline-flex"
+              onClick={onSidebarToggle}
+              aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {sidebarCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+            </Button>
+          )}
           <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMenuClick}>
             <Menu className="h-5 w-5" />
           </Button>
@@ -63,19 +77,42 @@ export function Header({ title, onMenuClick }: HeaderProps) {
                 </AvatarFallback>
               </Avatar>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>
-                <p className="font-semibold">{user?.firstName} {user?.lastName}</p>
-                <p className="text-xs text-muted-foreground">{user?.email}</p>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem render={<Link href="/organizer/settings" />}>
-                Settings
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer">
-                Logout
-              </DropdownMenuItem>
+            <DropdownMenuContent align="end" className="w-[290px] overflow-hidden rounded-2xl border border-white/10 bg-slate-950/95 p-0 shadow-2xl shadow-slate-950/60 backdrop-blur-xl sm:w-72">
+              <div className="bg-gradient-to-r from-indigo-500 via-violet-500 to-sky-500 p-4 text-white">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-11 w-11 border-2 border-white/30">
+                    <AvatarImage src={user?.avatar} alt={user?.firstName} />
+                    <AvatarFallback className="bg-white/20 text-sm font-semibold text-white">
+                      {user?.firstName?.[0]}{user?.lastName?.[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="truncate text-base font-semibold">{user?.firstName} {user?.lastName}</p>
+                    <p className="truncate text-xs text-white/80">{user?.email}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1 p-2">
+                <DropdownMenuItem
+                  onClick={() => router.push("/organizer/settings")}
+                  className="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-medium text-white hover:bg-white/8 focus:bg-white/8"
+                >
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => router.push("/organizer")}
+                  className="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-medium text-white hover:bg-white/8 focus:bg-white/8"
+                >
+                  Dashboard
+                </DropdownMenuItem>
+              </div>
+
+              <div className="border-t border-border/60 p-2">
+                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-medium text-destructive hover:bg-destructive/10 focus:bg-destructive/10">
+                  Logout
+                </DropdownMenuItem>
+              </div>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
