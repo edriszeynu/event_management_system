@@ -18,9 +18,32 @@ async function getEvents() {
       orderBy: { startDate: 'asc' },
     });
     return events.map((e) => ({
-      ...e,
+      id: e.id,
+      title: e.title,
+      slug: e.slug,
+      description: e.description,
+      category: e.category,
+      tags: e.tags,
+      eventType: e.eventType,
+      status: e.status,
       startDate: e.startDate.toISOString(),
       endDate: e.endDate.toISOString(),
+      venueAddress: e.venueAddress ?? undefined,
+      virtualLink: e.virtualLink ?? undefined,
+      bannerImage: e.bannerImage ?? undefined,
+      maxCapacity: e.maxCapacity,
+      organizer: e.organizer,
+      ticketTiers: e.ticketTiers.map((t) => ({
+        id: t.id,
+        name: t.name,
+        price: t.price,
+        quantityTotal: t.quantityTotal,
+        quantitySold: t.quantitySold,
+        salesStart: t.salesStart.toISOString(),
+        salesEnd: t.salesEnd.toISOString(),
+        status: t.status,
+        description: t.description ?? undefined,
+      })),
       registrationsCount: e._count.registrations,
     }));
   } catch (err) {
